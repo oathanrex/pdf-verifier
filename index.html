@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- ============================================================
+       Section 6.2 — Primary meta tags
+       ============================================================ -->
+  <title>PDF Signature Verifier — Validate Digital Signatures Online, Free &amp; Private</title>
+  <meta name="description" content="Instantly verify PDF digital signatures in your browser — no upload, no Adobe, no account. 100% client-side signature and integrity check in under 2 seconds.">
+  <meta name="keywords" content="verify pdf signature online free, validate digital signature without adobe, check if pdf is digitally signed, pdf signature checker">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="https://oathanrex.github.io/pdf-verifier/">
+  <meta name="author" content="Oathanrex">
+
+  <!-- ============================================================
+       Section 6.3 — Open Graph
+       ============================================================ -->
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="PDF Signature Verifier — Free, Private, Client-Side">
+  <meta property="og:description" content="Check any PDF for an embedded digital signature and structural integrity — entirely in your browser. No file ever leaves your device.">
+  <meta property="og:url" content="https://oathanrex.github.io/pdf-verifier/">
+  <meta property="og:image" content="https://oathanrex.github.io/pdf-verifier/assets/og-cover.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:site_name" content="Oathanrex Portfolio">
+
+  <!-- ============================================================
+       Section 6.4 — Twitter Card
+       ============================================================ -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="PDF Signature Verifier — Free, Private, Client-Side">
+  <meta name="twitter:description" content="Verify a PDF's digital signature instantly in your browser. Zero upload, zero server, zero cost.">
+  <meta name="twitter:image" content="https://oathanrex.github.io/pdf-verifier/assets/og-cover.png">
+
+  <!-- ============================================================
+       Section 6.5 — Structured data
+       ============================================================ -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "PDF Signature Verifier",
+    "applicationCategory": "UtilitiesApplication",
+    "operatingSystem": "Any (Web Browser)",
+    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+    "author": { "@type": "Person", "name": "Oathanrex" }
+  }
+  </script>
+
+  <!-- ============================================================
+       FR-04 — Pre-paint theme script. Must run synchronously, before
+       the stylesheet, to avoid a flash of incorrect theme. Mirrors
+       theme.js's storage key and "explicit choice beats system
+       preference" rule.
+       ============================================================ -->
+  <script>
+    (function () {
+      var STORAGE_KEY = 'pdfverifier-theme';
+      var stored = null;
+      try { stored = localStorage.getItem(STORAGE_KEY); } catch (e) { /* storage unavailable */ }
+
+      var isDark;
+      if (stored === 'dark' || stored === 'light') {
+        isDark = stored === 'dark';
+      } else {
+        // First visit, no explicit choice yet: default to dark per the
+        // product constraint, unless the OS explicitly prefers light.
+        var prefersLight = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches;
+        isDark = !prefersLight;
+      }
+      document.documentElement.classList.toggle('dark', isDark);
+    })();
+  </script>
+
+  <!-- Section 6.6 — build-time compiled stylesheet, never a runtime CDN -->
+  <link rel="stylesheet" href="./assets/styles.css">
+</head>
+
+<body class="bg-gray-50 dark:bg-slate-900 text-gray-900 dark:text-slate-100 transition-colors duration-200 min-h-screen flex flex-col">
+
+  <!-- ============================================================
+       Header: wordmark + theme toggle (FR-04)
+       ============================================================ -->
+  <header class="border-b border-gray-200 dark:border-slate-800">
+    <div class="max-w-2xl mx-auto flex items-center justify-between px-6 py-4">
+      <span class="font-semibold text-gray-900 dark:text-slate-100">PDF Signature Verifier</span>
+      <button
+        id="theme-toggle"
+        type="button"
+        role="switch"
+        aria-checked="false"
+        aria-label="Switch to light mode"
+        class="rounded-full border border-gray-300 dark:border-slate-700 px-3 py-1 text-sm text-gray-600 dark:text-slate-300 focus-visible:outline-none"
+      >Toggle theme</button>
+    </div>
+  </header>
+
+  <main class="flex-1">
+    <!-- ==========================================================
+         Hero — one-line value prop (Section 3.4: one-screen rule)
+         ========================================================== -->
+    <section class="max-w-2xl mx-auto px-6 pt-10 pb-4 text-center">
+      <h1 class="text-2xl font-semibold text-gray-900 dark:text-slate-100">Verify a PDF's digital signature, instantly.</h1>
+      <p class="mt-2 text-gray-500 dark:text-slate-400">No upload. No Adobe. No account. Everything happens in your browser.</p>
+    </section>
+
+    <!-- ==========================================================
+         Dropzone + state panels (FR-01, FR-03, FR-05)
+         ========================================================== -->
+    <section class="max-w-2xl mx-auto px-6 pb-10">
+      <div
+        id="dropzone"
+        class="border-2 border-dashed border-gray-300 dark:border-slate-700 rounded-xl p-12 text-center cursor-pointer transition-all duration-150 hover:border-indigo-500 dark:hover:border-indigo-400"
+      >
+        <svg id="dropzone-icon" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="mx-auto mb-3 text-gray-400 dark:text-slate-500">
+          <path d="M12 16V4M12 4l-4 4M12 4l4 4" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M4 16v3a2 2 0 002 2h12a2 2 0 002-2v-3" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <p id="dropzone-label" class="text-gray-600 dark:text-slate-300">Drag and drop a PDF here, or click to browse</p>
+      </div>
+      <input type="file" id="file-input" accept="application/pdf" class="hidden">
+
+      <!-- One panel visible at a time — see main.js STATE_PANEL_IDS -->
+      <div id="result">
+
+        <div id="panel-idle" class="hidden"></div>
+
+        <div id="panel-rejected" class="hidden mt-6 rounded-lg border border-rose-500 bg-rose-50 dark:bg-rose-500/10 p-4 text-rose-600 dark:text-rose-400">
+          <p class="font-medium">This file couldn't be checked.</p>
+          <p data-field="reason" class="text-sm mt-1"></p>
+          <button type="button" data-action="reset" class="mt-3 text-sm underline">Try Another File</button>
+        </div>
+
+        <div id="panel-processing" class="hidden mt-6 flex items-center justify-center gap-3 text-gray-500 dark:text-slate-400" aria-live="polite">
+          <svg class="animate-spin motion-reduce:animate-none" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="9" stroke-opacity="0.25"/>
+            <path d="M21 12a9 9 0 00-9-9" stroke-linecap="round"/>
+          </svg>
+          <span>Checking the signature…</span>
+        </div>
+
+        <div id="panel-success" class="hidden mt-6 rounded-lg border border-emerald-500 bg-emerald-50 dark:bg-emerald-500/10 p-4 text-emerald-700 dark:text-emerald-400">
+          <p class="font-medium">Signature structure detected and intact.</p>
+          <p data-field="reason" class="text-sm mt-1"></p>
+          <details class="mt-3 text-sm">
+            <summary class="cursor-pointer">Technical details</summary>
+            <p data-field="technical-details" class="mt-2 text-gray-600 dark:text-slate-400"></p>
+          </details>
+          <button type="button" data-action="reset" class="mt-3 text-sm underline">Verify Another File</button>
+        </div>
+
+        <div id="panel-unsigned" class="hidden mt-6 rounded-lg border border-rose-500 bg-rose-50 dark:bg-rose-500/10 p-4 text-rose-600 dark:text-rose-400">
+          <p class="font-medium">No digital signature found in this PDF.</p>
+          <p data-field="reason" class="text-sm mt-1"></p>
+          <button type="button" data-action="reset" class="mt-3 text-sm underline">Verify Another File</button>
+        </div>
+
+        <div id="panel-altered" class="hidden mt-6 rounded-lg border border-rose-500 bg-rose-50 dark:bg-rose-500/10 p-4 text-rose-600 dark:text-rose-400">
+          <p class="font-medium">This PDF appears to have changed since it was signed.</p>
+          <p data-field="reason" class="text-sm mt-1"></p>
+          <details class="mt-3 text-sm">
+            <summary class="cursor-pointer">Technical details</summary>
+            <p data-field="technical-details" class="mt-2 text-gray-600 dark:text-slate-400"></p>
+          </details>
+          <button type="button" data-action="reset" class="mt-3 text-sm underline">Verify Another File</button>
+        </div>
+
+        <div id="panel-nonstandard" class="hidden mt-6 rounded-lg border border-amber-500 bg-amber-50 dark:bg-amber-500/10 p-4 text-amber-700 dark:text-amber-400">
+          <p class="font-medium">This PDF uses a non-standard signature encoding.</p>
+          <p data-field="reason" class="text-sm mt-1"></p>
+          <button type="button" data-action="reset" class="mt-3 text-sm underline">Verify Another File</button>
+        </div>
+
+        <div id="panel-fail" class="hidden mt-6 rounded-lg border border-rose-500 bg-rose-50 dark:bg-rose-500/10 p-4 text-rose-600 dark:text-rose-400">
+          <p class="font-medium">Unable to parse this file.</p>
+          <p data-field="reason" class="text-sm mt-1"></p>
+          <button type="button" data-action="reset" class="mt-3 text-sm underline">Try Another File</button>
+        </div>
+
+      </div>
+    </section>
+  </main>
+
+  <!-- ==========================================================
+       Footer: mandatory scope disclaimer (7.1) + portfolio cross-link
+       ========================================================== -->
+  <footer class="border-t border-gray-200 dark:border-slate-800 mt-auto">
+    <div class="max-w-2xl mx-auto px-6 py-6 text-sm text-gray-500 dark:text-slate-400 space-y-4">
+      <p>
+        This tool checks for the structural presence and byte-range integrity of a digital signature.
+        It does not validate the signer's certificate against a trusted authority. For legally binding
+        verification, consult your PDF reader's full certificate validation.
+      </p>
+      <div class="flex items-center justify-between border-t border-gray-200 dark:border-slate-800 pt-4">
+        <a href="https://oathanrex.github.io/" class="hover:text-indigo-600 dark:hover:text-indigo-400">← Back to Portfolio</a>
+        <span>Created by <a href="https://oathanrex.github.io/" class="hover:text-indigo-600 dark:hover:text-indigo-400">Oathanrex</a></span>
+      </div>
+    </div>
+  </footer>
+
+  <script type="module" src="./js/main.js"></script>
+</body>
+</html>

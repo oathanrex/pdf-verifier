@@ -1,0 +1,14 @@
+{
+  "name": "pdf-signature-verifier",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Zero-server, client-side PDF digital signature verifier.",
+  "scripts": {
+    "build:css": "tailwindcss -i ./input.css -o ./assets/styles.css --minify",
+    "watch:css": "tailwindcss -i ./input.css -o ./assets/styles.css --watch",
+    "dev": "npx serve ."
+  },
+  "devDependencies": {
+    "tailwindcss": "^3.4.19"
+  }
+}

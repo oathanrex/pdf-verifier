@@ -1,0 +1,52 @@
+/*
+ * input.css
+ * PDF Signature Verifier — Tailwind entry point (compiled by the CLI per
+ * PRD v1.7 Section 6.6, never loaded via runtime CDN).
+ *
+ * Compile with:
+ *   npx tailwindcss -i ./input.css -o ./assets/styles.css --minify
+ */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * Section 5.3 — Motion & Accessibility
+ * All transition/animation utilities used elsewhere (drag feedback,
+ * spinner, theme-switch color transition) must be neutralized here for
+ * users who have requested reduced motion. This is a global, blanket
+ * override rather than per-component opt-outs, so no individual component
+ * can accidentally ship motion that ignores the preference.
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/*
+ * Section 5.3 — focus-visible ring baseline.
+ * Applied globally so every interactive element (dropzone, theme toggle,
+ * reset button, <summary> disclosure, portfolio link) gets a consistent,
+ * visible focus indicator without needing the utility repeated everywhere.
+ */
+:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--focus-ring-offset, #0f172a), 0 0 0 4px var(--focus-ring-color, #6366f1);
+}
+
+.dark :focus-visible {
+  --focus-ring-offset: #0f172a; /* slate-900 */
+  --focus-ring-color: #818cf8;  /* indigo-400 */
+}
+
+:root:not(.dark) :focus-visible {
+  --focus-ring-offset: #ffffff;
+  --focus-ring-color: #4f46e5; /* indigo-600 */
+}
