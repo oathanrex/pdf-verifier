@@ -65,7 +65,15 @@ function runWorker(file) {
   // FR-02b: import.meta.url-relative instantiation — correct regardless of
   // deployment subpath or nested folder depth. Requires this file to be
   // loaded as a module (see file header).
-  const worker = new Worker(new URL('./pdfParser.worker.js', import.meta.url), { type: 'module' });
+  // Classic (non-module) worker, deliberately — pdfParser.worker.js has no
+  // runtime import/export dependency (its module.exports block is guarded
+  // and only used for Node-based unit testing), so there is no need for
+  // module-worker semantics here. { type: 'module' } support is narrower
+  // across mobile browsers/WebViews than plain classic Worker support, and
+  // the import.meta.url-based path resolution below works identically
+  // either way, since it's main.js (already a module) resolving the URL,
+  // not the worker itself.
+  const worker = new Worker(new URL('./pdfParser.worker.js', import.meta.url));
   activeWorker = worker;
 
   /**
@@ -174,7 +182,16 @@ function renderState(state, payload) {
   const activeEl = activeId && document.getElementById(activeId);
   if (activeEl) activeEl.classList.remove('hidden');
 
-  renderPayloadDetails(state, payload);
+  if (resultEl) {
+    resultEl.setAttribute('data-status', (payload && payload.status) || '');
+  }
+
+  // Bug fix: scope the field lookups to the ACTIVE panel only. Querying
+  // resultEl broadly would match the FIRST [data-field="reason"] in
+  // document order across all 8 panels — not necessarily the one that
+  // just became visible — silently writing the result into an invisible
+  // panel while the visible one stays blank.
+  renderPayloadDetails(activeEl, payload);
 }
 
 /**
@@ -182,16 +199,15 @@ function renderState(state, payload) {
  * technical detail panel (signature count, byte-range values, parse time,
  * reason string) for whichever panel is currently active.
  */
-function renderPayloadDetails(state, payload) {
-  if (!resultEl) return;
-  resultEl.setAttribute('data-status', (payload && payload.status) || '');
+function renderPayloadDetails(activeEl, payload) {
+  if (!activeEl) return;
 
-  const reasonEl = resultEl.querySelector('[data-field="reason"]');
+  const reasonEl = activeEl.querySelector('[data-field="reason"]');
   if (reasonEl) {
     reasonEl.textContent = (payload && payload.reason) || '';
   }
 
-  const detailsEl = resultEl.querySelector('[data-field="technical-details"]');
+  const detailsEl = activeEl.querySelector('[data-field="technical-details"]');
   if (detailsEl && payload && typeof payload.signatureCount === 'number') {
     detailsEl.textContent =
       `Signatures found: ${payload.signatureCount} · ` +
