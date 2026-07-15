@@ -43,6 +43,30 @@ resetButtons.forEach((btn) => {
   });
 });
 
+// Manual escape hatch (defense-in-depth): unlike the terminal-state reset
+// buttons above, this one is reachable WHILE PROCESSING and forcibly tears
+// down any in-flight worker/timeout rather than waiting for one to settle
+// naturally — for the case where something unforeseen leaves the state
+// machine stuck despite the try/catch guards in runWorker().
+document.querySelectorAll('[data-action="force-reset"]').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    if (activeTimeoutId) {
+      clearTimeout(activeTimeoutId);
+      activeTimeoutId = null;
+    }
+    if (activeWorker) {
+      try {
+        activeWorker.terminate();
+      } catch (e) {
+        // already dead or never fully constructed — nothing to clean up
+      }
+      activeWorker = null;
+    }
+    dz.resetFileInput();
+    stateController.reset();
+  });
+});
+
 // Initial paint, matching whatever state the pre-paint inline script left
 // the DOM in (theme) plus the machine's own IDLE default.
 renderState(stateController.getState(), stateController.getPayload());
@@ -62,27 +86,15 @@ function runWorker(file) {
   const startedAt = performance.now();
   let settled = false;
 
-  // FR-02b: import.meta.url-relative instantiation — correct regardless of
-  // deployment subpath or nested folder depth. Requires this file to be
-  // loaded as a module (see file header).
-  // Classic (non-module) worker, deliberately — pdfParser.worker.js has no
-  // runtime import/export dependency (its module.exports block is guarded
-  // and only used for Node-based unit testing), so there is no need for
-  // module-worker semantics here. { type: 'module' } support is narrower
-  // across mobile browsers/WebViews than plain classic Worker support, and
-  // the import.meta.url-based path resolution below works identically
-  // either way, since it's main.js (already a module) resolving the URL,
-  // not the worker itself.
-  const worker = new Worker(new URL('./pdfParser.worker.js', import.meta.url));
-  activeWorker = worker;
+  let worker;
 
   /**
    * Idempotent settle: exactly one of {worker.onmessage, worker.onerror,
-   * the timeout} may actually resolve this run. Without this guard, a
-   * worker result that arrives a moment after the 8s timeout already fired
-   * would still try to drive a second state transition on top of the
-   * timeout's FAIL_PARSE_ERROR — a real race the timeout guard's addition
-   * introduces if not closed explicitly.
+   * the timeout, a construction/postMessage failure} may actually resolve
+   * this run. Without this guard, a worker result that arrives a moment
+   * after the 8s timeout already fired would still try to drive a second
+   * state transition on top of the timeout's FAIL_PARSE_ERROR — a real
+   * race the timeout guard's addition introduces if not closed explicitly.
    */
   function settle(result) {
     if (settled) return;
@@ -93,11 +105,46 @@ function runWorker(file) {
       activeTimeoutId = null;
     }
     if (activeWorker) {
-      activeWorker.terminate(); // FR-02b cleanup
+      try {
+        activeWorker.terminate(); // FR-02b cleanup
+      } catch (e) {
+        // Worker may already be dead/never fully constructed — nothing
+        // further to clean up in that case.
+      }
       activeWorker = null;
     }
 
     stateController.toResult(result);
+  }
+
+  // FR-02b: import.meta.url-relative instantiation — correct regardless of
+  // deployment subpath or nested folder depth. Classic (non-module) worker,
+  // deliberately — pdfParser.worker.js has no runtime import/export
+  // dependency, and classic-worker support is broader across mobile
+  // browsers/WebViews than { type: 'module' }.
+  //
+  // CRITICAL: this call is wrapped in try/catch. If `new Worker(...)`
+  // throws synchronously (blocked by a restrictive WebView, a CSP rule, or
+  // any other environment-specific reason), execution would otherwise skip
+  // straight past the setTimeout() call below without ever scheduling it —
+  // meaning NO timeout, NO onmessage, NO onerror would ever fire, and the
+  // state machine would stay in PROCESSING permanently. Because every
+  // non-IDLE state locks the dropzone (per FR-03's generalized lock), this
+  // exact failure mode presents as "first upload does nothing, every
+  // subsequent click is silently ignored forever" — found via real-device
+  // testing, not anticipated in the original spec.
+  try {
+    worker = new Worker(new URL('./pdfParser.worker.js', import.meta.url));
+    activeWorker = worker;
+  } catch (err) {
+    settle({
+      status: 'error',
+      signatureCount: 0,
+      byteRangeValid: false,
+      reason: `This browser could not start the verification worker (${err && err.message ? err.message : 'unknown error'}). Try a different browser, or make sure the page was opened over http/https, not as a local file.`,
+      parseTimeMs: 0,
+    });
+    return;
   }
 
   activeTimeoutId = setTimeout(() => {
@@ -129,7 +176,17 @@ function runWorker(file) {
     );
   };
 
-  worker.postMessage(file); // structured-clone of the File object — no Transferable, no neutering
+  try {
+    worker.postMessage(file); // structured-clone of the File object — no Transferable, no neutering
+  } catch (err) {
+    settle({
+      status: 'error',
+      signatureCount: 0,
+      byteRangeValid: false,
+      reason: `Could not hand the file to the verification worker (${err && err.message ? err.message : 'unknown error'}).`,
+      parseTimeMs: performance.now() - startedAt,
+    });
+  }
 }
 
 /**
