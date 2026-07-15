@@ -201,5 +201,16 @@
   </footer>
 
   <script type="module" src="./js/main.js"></script>
+  <noscript>
+    <p style="text-align:center;padding:2rem;color:#f43f5e;">This tool requires JavaScript to be enabled to work.</p>
+  </noscript>
+  <script nomodule>
+    document.addEventListener('DOMContentLoaded', function () {
+      var el = document.getElementById('dropzone');
+      if (el) {
+        el.innerHTML = '<p style="color:#f43f5e;">Your browser does not support the modern JavaScript features this tool requires. Please open this page in an up-to-date version of Chrome, Firefox, Safari, or Edge.</p>';
+      }
+    });
+  </script>
 </body>
 </html>
