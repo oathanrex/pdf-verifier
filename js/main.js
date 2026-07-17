@@ -9,6 +9,35 @@ import { StateController, STATES } from './stateMachine.js';
 import { initDropzone } from './dropzone.js';
 import { initTheme } from './theme.js';
 
+// Maps each state to the id of the single panel that should be visible.
+// index.html must contain exactly one element per id below, each starting
+// with the 'hidden' class so this is the single source of truth for which
+// panel is shown — no CSS attribute-selector duplication of this logic.
+//
+// BUG FIX (found via real-device console error, not anticipated in spec):
+// this declaration MUST come before any code that calls renderState() —
+// including the initial paint call further down this file. `const` is
+// hoisted but left in a "temporal dead zone" until its declaration line
+// actually executes; the previous version of this file declared
+// STATE_PANEL_IDS near the bottom, AFTER the initial renderState() call
+// already ran and tried to read it — throwing "Cannot access
+// 'STATE_PANEL_IDS' before initialization" and aborting the rest of the
+// module's top-level execution entirely. Because that abort happened
+// mid-file, everything below the crash point — including this very
+// declaration in its old location — never ran, so the error repeated on
+// every subsequent state change forever (the exact "first upload does
+// nothing, every retry is silently ignored" symptom).
+const STATE_PANEL_IDS = {
+  [STATES.IDLE]: 'panel-idle',
+  [STATES.REJECTED_INVALID_FILE]: 'panel-rejected',
+  [STATES.PROCESSING]: 'panel-processing',
+  [STATES.SUCCESS]: 'panel-success',
+  [STATES.WARNING_UNSIGNED]: 'panel-unsigned',
+  [STATES.WARNING_ALTERED]: 'panel-altered',
+  [STATES.WARNING_NONSTANDARD]: 'panel-nonstandard',
+  [STATES.FAIL_PARSE_ERROR]: 'panel-fail',
+};
+
 const WORKER_TIMEOUT_MS = 8000;   // FR-02b timeout guard
 const PROCESSING_MIN_MS = 400;    // 4.3.1 artificial floor — PROCESSING only, never REJECTED_INVALID_FILE
 
@@ -206,21 +235,6 @@ function applyProcessingFloor(startedAt, callback) {
 }
 
 // --- Rendering ---------------------------------------------------------
-
-// Maps each state to the id of the single panel that should be visible.
-// index.html must contain exactly one element per id below, each starting
-// with the 'hidden' class so this is the single source of truth for which
-// panel is shown — no CSS attribute-selector duplication of this logic.
-const STATE_PANEL_IDS = {
-  [STATES.IDLE]: 'panel-idle',
-  [STATES.REJECTED_INVALID_FILE]: 'panel-rejected',
-  [STATES.PROCESSING]: 'panel-processing',
-  [STATES.SUCCESS]: 'panel-success',
-  [STATES.WARNING_UNSIGNED]: 'panel-unsigned',
-  [STATES.WARNING_ALTERED]: 'panel-altered',
-  [STATES.WARNING_NONSTANDARD]: 'panel-nonstandard',
-  [STATES.FAIL_PARSE_ERROR]: 'panel-fail',
-};
 
 function renderState(state, payload) {
   document.body.setAttribute('data-state', state);
